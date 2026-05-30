@@ -1,86 +1,7 @@
-// import React, { useState } from 'react'; 
-// import { predictChurn } from '../services/api'; 
-// import { PieChart, Pie, Cell, Tooltip, Legend } from 'recharts'; 
- 
-// const COLORS = ['#00C49F', '#FF8042']; 
-
-// export default function Dashboard() { 
-//   const [formData, setFormData] = useState({ 
-//     tenure: 1, 
-//     monthlycharges: 50.0, 
-//     contract: 0, // 0: Month-to-month, 1: One year, 2: Two year 
-//   }); 
- 
-//   const [prediction, setPrediction] = useState(null); 
- 
-//   const handleChange = (e) => { 
-//     const { name, value } = e.target; 
-//     setFormData({ ...formData, [name]: name === 'contract' ? 
-// parseInt(value) : parseFloat(value) }); 
-//   }; 
- 
-//   const handleSubmit = async (e) => { 
-//     e.preventDefault(); 
-//     const result = await predictChurn(formData); 
-//     setPrediction(result); 
-//   }; 
- 
-//   return ( 
-//     <div> 
-//       <h2>Customer Churn Predictor</h2> 
-//       <form onSubmit={handleSubmit}> 
-//         <label>Tenure (months): 
-//           <input type="number" name="tenure" value={formData.tenure} 
-// onChange={handleChange} /> 
-//         </label> 
-//         <br /> 
-//         <label>Monthly Charges: 
-//           <input type="number" step="0.01" name="monthlycharges" 
-// value={formData.monthlycharges} onChange={handleChange} /> 
-//         </label> 
-//         <br /> 
-//         <label>Contract Type: 
-//           <select name="contract" value={formData.contract} 
-// onChange={handleChange}> 
-//             <option value={0}>Month-to-month</option> 
-//             <option value={1}>One year</option> 
-//             <option value={2}>Two year</option> 
-//           </select>
-//            </label> 
-//         <br /> 
-//         <button type="submit">Predict</button> 
-//       </form> 
- 
-//       {prediction && ( 
-//         <PieChart width={400} height={300}> 
-//           <Pie 
-//             data={[ 
-//               { name: 'No Churn', value: 1 - prediction.prediction }, 
-//               { name: 'Churn', value: prediction.prediction }, 
-//             ]} 
-//             dataKey="value" 
-//             nameKey="name" 
-//             cx="50%" 
-//             cy="50%" 
-//             outerRadius={80} 
-//             fill="#8884d8" 
-//             label 
-//           > 
-//             {COLORS.map((color, index) => ( 
-//               <Cell key={`cell-${index}`} fill={color} /> 
-//             ))} 
-//           </Pie> 
-//           <Tooltip /> 
-//           <Legend /> 
-//         </PieChart> 
-//       )} 
-//     </div> 
-//   ); 
-// } 
-
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
-  LineChart, Line, XAxis, YAxis, CartesianGrid,
+  LineChart, Line, BarChart, Bar, Cell,
+  XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend,
 } from "recharts";
 import {
@@ -88,6 +9,10 @@ import {
   getEodPrices,
   getCorrelations,
   runAnalysis,
+  getAnalyticsSummary,
+  getAnalyticsScreens,
+  predictPriceMovement,
+  getPredictionHistory,
 } from "../services/api";
 
 // ─── Paleta y tokens ─────────────────────────────────────────
@@ -215,6 +140,7 @@ function Btn({ children, onClick, loading, color = C.accent, disabled }) {
 // ─── Sección 1: Clima actual ──────────────────────────────────
 
 function WeatherSection() {
+  console.log("Pura prueba 6");
   const [city, setCity]       = useState("Guatemala City");
   const [country, setCountry] = useState("GT");
   const [data, setData]       = useState(null);
@@ -263,6 +189,7 @@ function WeatherSection() {
 // ─── Sección 2: Precios EOD ───────────────────────────────────
 
 function MarketSection() {
+  console.log("Pura prueba 5");
   const [symbolsInput, setSymbolsInput] = useState("AAPL,AMZN");
   const [limit, setLimit]               = useState("10");
   const [data, setData]                 = useState([]);
@@ -356,6 +283,7 @@ function MarketSection() {
 // ─── Sección 3: Correlaciones ─────────────────────────────────
 
 function CorrelationsSection() {
+  console.log("Pura prueba 4");
   const [cityFilter,   setCityFilter]   = useState("");
   const [symbolFilter, setSymbolFilter] = useState("");
   const [data, setData]                 = useState([]);
@@ -420,6 +348,7 @@ function CorrelationsSection() {
 // ─── Sección 4: Análisis completo ────────────────────────────
 
 function AnalysisSection() {
+  console.log("Pura prueba 2");
   const [city,    setCity]    = useState("Guatemala City");
   const [symbols, setSymbols] = useState("AAPL,AMZN");
   const [result,  setResult]  = useState(null);
@@ -484,6 +413,273 @@ function AnalysisSection() {
   );
 }
 
+function PredictionSection() {
+  console.log("Pura prueba 3");
+  const [symbol,  setSymbol]  = useState("AAPL");
+  const [city,    setCity]    = useState("Guatemala City");
+  const [result,  setResult]  = useState(null);
+  const [history, setHistory] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState("");
+ 
+  const run = useCallback(async () => {
+    setLoading(true); setError(""); setResult(null);
+    try {
+      const res = await predictPriceMovement(symbol.trim().toUpperCase(), city);
+      setResult(res);
+      // Refresca historial
+      const hist = await getPredictionHistory(symbol.trim().toUpperCase(), 10);
+      setHistory(hist.predictions || []);
+    } catch (e) {
+      setError(e?.response?.data?.detail || "Error al predecir.");
+    } finally { setLoading(false); }
+  }, [symbol, city]);
+ 
+  const isUp = result?.prediction_code === 1;
+ 
+  return (
+    <Card title="Predicción de precio" accent={C.warn}>
+      <p style={{ margin: "0 0 1rem 0", fontSize: 12, color: C.muted, fontFamily: "'Space Mono', monospace" }}>
+        Modelo RandomForest: predice si el precio sube o baja según la temperatura actual.
+      </p>
+      <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap", marginBottom: "1rem" }}>
+        <Input label="Símbolo" value={symbol} onChange={e => setSymbol(e.target.value)} placeholder="AAPL" style={{ flex: 1 }} />
+        <Input label="Ciudad" value={city} onChange={e => setCity(e.target.value)} placeholder="Guatemala City" style={{ flex: 2 }} />
+        <div style={{ display: "flex", alignItems: "flex-end" }}>
+          <Btn onClick={run} loading={loading} color={C.warn}>Predecir</Btn>
+        </div>
+      </div>
+      {error && <p style={{ color: "#ff6b6b", fontSize: 12, margin: 0 }}>{error}</p>}
+      {loading && <Spinner />}
+ 
+      {result && !loading && (
+        <div style={{ marginTop: "0.5rem" }}>
+          {/* Resultado principal */}
+          <div style={{
+            background: isUp ? "#00ff8812" : "#ff6b3512",
+            border: `1px solid ${isUp ? C.accent3 : C.accent2}44`,
+            borderRadius: 12, padding: "1.25rem",
+            display: "flex", alignItems: "center", gap: "1.5rem",
+            marginBottom: "1rem",
+          }}>
+            <span style={{ fontSize: 48 }}>{isUp ? "📈" : "📉"}</span>
+            <div>
+              <p style={{ margin: 0, fontSize: 22, fontWeight: 700, color: isUp ? C.accent3 : C.accent2, fontFamily: "'Space Mono', monospace" }}>
+                {isUp ? "SUBE" : "BAJA"}
+              </p>
+              <p style={{ margin: "4px 0 0", fontSize: 12, color: C.muted, fontFamily: "'Space Mono', monospace" }}>
+                {result.symbol} · {result.temperature}°C en {result.city}
+              </p>
+            </div>
+          </div>
+ 
+          {/* Stats */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px,1fr))", gap: "0.75rem", marginBottom: "1rem" }}>
+            {[
+              { label: "Probabilidad", value: `${(result.probability * 100).toFixed(1)}%`, color: C.warn },
+              { label: "Accuracy",     value: `${(result.accuracy * 100).toFixed(1)}%`,     color: C.accent },
+              { label: "Muestras",     value: result.training_samples,                       color: C.accent3 },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ background: C.bg, borderRadius: 8, padding: "0.75rem" }}>
+                <p style={{ margin: "0 0 4px", fontSize: 10, color: C.muted, fontFamily: "'Space Mono', monospace", letterSpacing: "0.1em" }}>{label.toUpperCase()}</p>
+                <p style={{ margin: 0, fontSize: 16, color, fontWeight: 700, fontFamily: "'Space Mono', monospace" }}>{value}</p>
+              </div>
+            ))}
+          </div>
+ 
+          {/* Importancia de features */}
+          {result.feature_importance && (
+            <>
+              <p style={{ margin: "0 0 8px", fontSize: 10, color: C.muted, fontFamily: "'Space Mono', monospace", letterSpacing: "0.1em" }}>IMPORTANCIA DE FEATURES</p>
+              {Object.entries(result.feature_importance).map(([feat, val]) => (
+                <div key={feat} style={{ marginBottom: 6 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 2 }}>
+                    <span style={{ fontSize: 11, color: C.text, fontFamily: "'Space Mono', monospace" }}>{feat}</span>
+                    <span style={{ fontSize: 11, color: C.warn, fontFamily: "'Space Mono', monospace" }}>{(val * 100).toFixed(1)}%</span>
+                  </div>
+                  <div style={{ height: 4, background: C.border, borderRadius: 2 }}>
+                    <div style={{ height: "100%", width: `${val * 100}%`, background: C.warn, borderRadius: 2, transition: "width 0.5s ease" }} />
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+ 
+          {/* Mensaje */}
+          <p style={{ margin: "1rem 0 0", fontSize: 12, color: C.muted, fontFamily: "'Space Mono', monospace", lineHeight: 1.6 }}>
+            {result.message}
+          </p>
+        </div>
+      )}
+ 
+      {/* Historial */}
+      {history.length > 0 && !loading && (
+        <div style={{ marginTop: "1.5rem" }}>
+          <p style={{ margin: "0 0 8px", fontSize: 10, color: C.muted, fontFamily: "'Space Mono', monospace", letterSpacing: "0.1em" }}>HISTORIAL RECIENTE</p>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+              <thead>
+                <tr>{["Símbolo", "Ciudad", "Temp", "Predicción", "Prob.", "Accuracy"].map(h => (
+                  <th key={h} style={{ padding: "6px 8px", textAlign: "left", color: C.muted, fontFamily: "'Space Mono', monospace", fontSize: 10, letterSpacing: "0.08em", borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                ))}</tr>
+              </thead>
+              <tbody>
+                {history.map((row, i) => (
+                  <tr key={i} style={{ borderBottom: `1px solid ${C.border}22` }}>
+                    <td style={{ padding: "6px 8px" }}><Tag color={C.warn}>{row.symbol}</Tag></td>
+                    <td style={{ padding: "6px 8px", color: C.muted, fontFamily: "'Space Mono', monospace" }}>{row.city}</td>
+                    <td style={{ padding: "6px 8px", color: C.accent, fontFamily: "'Space Mono', monospace" }}>{row.temperature}°C</td>
+                    <td style={{ padding: "6px 8px", color: row.prediction_code === 1 ? C.accent3 : C.accent2, fontFamily: "'Space Mono', monospace", fontWeight: 700 }}>{row.prediction}</td>
+                    <td style={{ padding: "6px 8px", color: C.text, fontFamily: "'Space Mono', monospace" }}>{(row.probability * 100).toFixed(1)}%</td>
+                    <td style={{ padding: "6px 8px", color: C.text, fontFamily: "'Space Mono', monospace" }}>{(row.accuracy * 100).toFixed(1)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </Card>
+  );
+}
+ 
+ 
+// ════════════════════════════════════════════════════════════
+//  SECCIÓN: ANALYTICS FIREBASE
+// ════════════════════════════════════════════════════════════
+ 
+function AnalyticsSection() {
+  console.log("Pura prueba 1");
+  const [summary, setSummary] = useState(null);
+  const [screens, setScreens] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState("");
+ 
+  const load = useCallback(async () => {
+    setLoading(true); setError("");
+    try {
+      const [sumRes, scrRes] = await Promise.all([
+        getAnalyticsSummary(),
+        getAnalyticsScreens(),
+      ]);
+      console.log("sumRes:", sumRes);      // ← agrega esto
+      console.log("scrRes:", scrRes);
+      setSummary(sumRes);
+      setScreens(scrRes.screens || []);
+    } catch (e) {
+      console.log("Error:", e); 
+      setError(e?.response?.data?.detail || "Error al cargar analytics.");
+    } finally { setLoading(false); }
+  }, []);
+ 
+  // Colores para las barras
+  const barColors = [C.accent, C.accent2, C.accent3, C.warn, "#c084fc", "#f472b6"];
+ 
+  return (
+    <Card title="Analytics — Uso de la app móvil" accent={C.accent3}>
+      <p style={{ margin: "0 0 1rem 0", fontSize: 12, color: C.muted, fontFamily: "'Space Mono', monospace" }}>
+        Datos de Firebase Analytics: usuarios activos, eventos y pantallas más visitadas.
+      </p>
+ 
+      <div style={{ marginBottom: "1rem" }}>
+        <Btn onClick={load} loading={loading} color={C.accent3}>Cargar analytics</Btn>
+      </div>
+ 
+      {error  && <p style={{ color: "#ff6b6b", fontSize: 12, margin: 0 }}>{error}</p>}
+      {loading && <Spinner />}
+ 
+      {summary && !loading && (
+        <>
+          {/* KPIs */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(150px,1fr))", gap: "0.75rem", marginBottom: "1.5rem" }}>
+            {[
+              { label: "Eventos totales",   value: summary.summary.total_events_tracked,    color: C.accent3 },
+              { label: "Usuarios activos",  value: summary.summary.estimated_active_users,  color: C.accent },
+              { label: "Tipos de eventos",  value: summary.detailed_events?.length || 0,    color: C.warn },
+            ].map(({ label, value, color }) => (
+              <div key={label} style={{ background: C.bg, borderRadius: 8, padding: "0.75rem", borderLeft: `3px solid ${color}` }}>
+                <p style={{ margin: "0 0 4px", fontSize: 10, color: C.muted, fontFamily: "'Space Mono', monospace", letterSpacing: "0.1em" }}>{label.toUpperCase()}</p>
+                <p style={{ margin: 0, fontSize: 20, color, fontWeight: 700, fontFamily: "'Space Mono', monospace" }}>{value.toLocaleString()}</p>
+              </div>
+            ))}
+          </div>
+ 
+          {/* Gráfica de eventos */}
+          {summary.detailed_events?.length > 0 && (
+            <>
+              <p style={{ margin: "0 0 8px", fontSize: 10, color: C.muted, fontFamily: "'Space Mono', monospace", letterSpacing: "0.1em" }}>EVENTOS POR NOMBRE</p>
+              <ResponsiveContainer width="100%" height={200}>
+                <BarChart data={summary.detailed_events.slice(0, 8)} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+                  <XAxis dataKey="event_name" tick={{ fill: C.muted, fontSize: 9 }} axisLine={{ stroke: C.border }} />
+                  <YAxis tick={{ fill: C.muted, fontSize: 10 }} axisLine={{ stroke: C.border }} width={40} />
+                  <Tooltip
+                    contentStyle={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12 }}
+                    labelStyle={{ color: C.text }}
+                  />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]}>
+                    {summary.detailed_events.slice(0, 8).map((_, i) => (
+                      <Cell key={i} fill={barColors[i % barColors.length]} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+ 
+              {/* Tabla de eventos */}
+              <div style={{ overflowX: "auto", marginTop: "1rem" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                  <thead>
+                    <tr>{["Evento", "Usuarios", "Conteo"].map(h => (
+                      <th key={h} style={{ padding: "6px 8px", textAlign: "left", color: C.muted, fontFamily: "'Space Mono', monospace", fontSize: 10, letterSpacing: "0.08em", borderBottom: `1px solid ${C.border}` }}>{h}</th>
+                    ))}</tr>
+                  </thead>
+                  <tbody>
+                    {summary.detailed_events.map((ev, i) => (
+                      <tr key={i} style={{ borderBottom: `1px solid ${C.border}22`, background: i % 2 === 0 ? "transparent" : `${C.border}22` }}>
+                        <td style={{ padding: "6px 8px" }}><Tag color={barColors[i % barColors.length]}>{ev.event_name}</Tag></td>
+                        <td style={{ padding: "6px 8px", color: C.accent, fontFamily: "'Space Mono', monospace" }}>{ev.users}</td>
+                        <td style={{ padding: "6px 8px", color: C.text, fontFamily: "'Space Mono', monospace" }}>{ev.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </>
+      )}
+ 
+      {/* Pantallas más visitadas */}
+      {screens.length > 0 && !loading && (
+        <div style={{ marginTop: "1.5rem" }}>
+          <p style={{ margin: "0 0 8px", fontSize: 10, color: C.muted, fontFamily: "'Space Mono', monospace", letterSpacing: "0.1em" }}>PANTALLAS MÁS VISITADAS</p>
+          <ResponsiveContainer width="100%" height={180}>
+            <BarChart data={screens.slice(0, 6)} layout="vertical" margin={{ top: 4, right: 8, bottom: 0, left: 60 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={C.border} />
+              <XAxis type="number" tick={{ fill: C.muted, fontSize: 10 }} axisLine={{ stroke: C.border }} />
+              <YAxis type="category" dataKey="screen_name" tick={{ fill: C.muted, fontSize: 10 }} axisLine={{ stroke: C.border }} width={60} />
+              <Tooltip
+                contentStyle={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 8, fontSize: 12 }}
+              />
+              <Bar dataKey="views" radius={[0, 4, 4, 0]}>
+                {screens.slice(0, 6).map((_, i) => (
+                  <Cell key={i} fill={barColors[i % barColors.length]} />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+ 
+      {!summary && !loading && !error && (
+        <p style={{ color: C.muted, fontSize: 12, fontFamily: "'Space Mono', monospace", margin: 0 }}>
+          Presiona "Cargar analytics" para ver los datos de Firebase.
+        </p>
+      )}
+    </Card>
+  );
+}
+
 // ─── Dashboard principal ──────────────────────────────────────
 
 export default function Dashboard() {
@@ -530,7 +726,9 @@ export default function Dashboard() {
           <AnalysisSection/>
         </div>
         <MarketSection/>
+        <PredictionSection />
         <CorrelationsSection/>
+        <AnalyticsSection />
       </div>
     </div>
   );
